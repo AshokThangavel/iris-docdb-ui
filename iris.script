@@ -1,6 +1,7 @@
     zn "%SYS"
     do ##class(Security.Users).UnExpireUserPasswords("*")
     zpm "install passwordless"
+    set ^%DOCKER="1"
     zn "USER"
     zpm "load /home/irisowner/dev/ -v":1
     /// EnableDocDBService
