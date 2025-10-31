@@ -75,6 +75,7 @@ ClassMethod GetServerInfo() As %String
 	Set sc=##class(%RoutineMgr).GetWebServerPort(.Port,.Server,.URLPrefix,.URL)
 
 	SET hostIP = ##class(%SYSTEM.Util).GetEnviron("HOST_IP")
+    If $d(^%DOCKER) Set hostIP="localhost"
 	If hostIP'="" {
 		Set ServerInfo = $P(URL,"//")_"//"_hostIP_$S(Port'="":":"_Port)
 	}
