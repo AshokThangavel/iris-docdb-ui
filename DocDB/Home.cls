@@ -581,7 +581,7 @@ ClassMethod Scripts()
 
             try {
 
-                const response = await fetch(`${baseUrl}v1/${encodeURIComponent(selectedNamespace)}/doc/${selectedDocdb}/${docId}`);
+                const response = await fetch(`${baseUrl}v1/${encodeURIComponent(selectedNamespace)}/doc/${encodeURIComponent(selectedDocdb)}/${docId}`);
                 if (!response.ok) throw new Error('Failed to fetch document');
 
                 const data = await response.json();
@@ -627,8 +627,18 @@ ClassMethod Scripts()
                         'Content-Type': 'application/json'
                     }
                 });
-
-                if (!response.ok) throw new Error('Failed to create document database');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    let errorMessage = 'Failed to create document database';
+                    // Extract error message from response
+                    if (errorData.status && errorData.status.summary) {
+                        errorMessage = decodeHTMLEntities(errorData.status.summary);
+                    } else if (errorData.status && errorData.status.errors && errorData.status.errors.length > 0) {
+                        errorMessage = decodeHTMLEntities(errorData.status.errors[0].error);
+                    }
+                    alert(errorMessage);
+                    throw new Error(errorMessage);
+                }
 
                 // Close the modal
                 closeNewDocdbModal();
@@ -659,8 +669,6 @@ ClassMethod Scripts()
                         toggle.innerHTML = '<i class="fas fa-chevron-down"></i>';
                     }
                 }
-
-                // Show success message
                 showSuccess(`Document database "${docdbName}" created successfully in namespace "${namespace}"`);
             } catch (error) {
                 showError(`Error creating document database: ${error.message}`);
@@ -702,7 +710,6 @@ ClassMethod Scripts()
             }
 
             try {
-				
                 const response = await fetch(`${baseUrl}v1/${encodeURIComponent(selectedNamespace)}/doc/${encodeURIComponent(selectedDocdb)}/`, {
                     method: 'POST',
                     headers: {
@@ -770,7 +777,6 @@ ClassMethod Scripts()
             }
 
             try {
-	            
                 const response = await fetch(`${baseUrl}v1/${encodeURIComponent(selectedNamespace)}/doc/${encodeURIComponent(selectedDocdb)}/${currentDocId}`, {
                     method: 'PUT',
                     headers: {
