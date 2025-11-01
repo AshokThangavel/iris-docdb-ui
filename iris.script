@@ -1,7 +1,8 @@
-    zn "%SYS"
-    do ##class(Security.Users).UnExpireUserPasswords("*")
-    zpm "install passwordless"
-    zn "USER"
+    ZN "%SYS"
+    Do ##class(Security.Users).UnExpireUserPasswords("*")
+    ZPM "install passwordless"
+    ZN "USER"
+    Set ^ZIRIS.Docker.DocDB=1
     zpm "load /home/irisowner/dev/ -v":1
     /// EnableDocDBService
     Do ##class(DocDB.Home).EnableDocDBService()
