@@ -50,13 +50,11 @@ Access the InterSystems IRIS **System Management Portal** at:
 ---
 Once the containers are running, open your browser and navigate to:
 
-```
 http://localhost:52773/csp/user/DocDB.Home.cls
-```
+
 ## Screenshot
 ---
-<img width="1732" height="978" alt="image" src="https://github.com/user-attachments/assets/d7efe41c-a40a-4a1f-8e87-d176001537da" />
-
+<img width="1717" height="1005" alt="image" src="https://github.com/user-attachments/assets/3c35e041-5878-466b-bddf-aa16bdfac753" />
 
 ## License
 
