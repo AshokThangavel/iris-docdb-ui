@@ -141,6 +141,7 @@ ClassMethod OnRenderScreen() As %Status
                         <div class="button-group">
                             <button id="fetchButton">Fetch Document</button>
                             <button id="addDocumentBtn">Add Document</button>
+                            <button id="deleteDocumentBtn">Delete Document</button>
                         </div>
                         <span id="loadingIndicator" class="loading" style="display: none;"></span>
                     </div>
@@ -223,6 +224,24 @@ ClassMethod OnRenderScreen() As %Status
             </div>
         </div>
     </div>
+
+    <!-- Modal for deleting document -->
+    <div id="deleteDocumentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete Document</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="form-group">
+                <label for="deleteDocId">Document ID:</label>
+                <input type="text" id="deleteDocId" placeholder="Enter document ID to delete">
+            </div>
+            <div class="modal-footer">
+                <button id="cancelDeleteDocumentBtn" class="btn-secondary">Cancel</button>
+                <button id="confirmDeleteDocumentBtn" class="btn-danger">Delete Document</button>
+            </div>
+        </div>
+    </div>
 </body>
 	>
 }
@@ -250,6 +269,16 @@ ClassMethod CreateSampleDocDB()
 	Set st = myoref.%Save()
 }
 
+ClassMethod GetDocDBRecCount(Namespace = "", DocDBName = "") As %Integer
+{
+	New $NAMESPACE
+	Set $NAMESPACE = Namespace
+	Set table = $TR($Piece(DocDBName,".",1,*-1),".","_")_"."_$Piece(DocDBName,".",*)
+	Set tResult = ##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) AS DocRecCount FROM "_table)
+	Do tResult.%Next()
+	Return tResult.DocRecCount
+}
+
 ClassMethod Scripts()
 {
 	&HTML<
@@ -267,6 +296,7 @@ ClassMethod Scripts()
         const docIdInput = document.getElementById('docId');
         const fetchButton = document.getElementById('fetchButton');
         const addDocumentBtn = document.getElementById('addDocumentBtn');
+	const deleteDocumentBtn = document.getElementById('deleteDocumentBtn');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const resultContainer = document.getElementById('resultContainer');
         const resultContent = document.getElementById('resultContent');
@@ -292,6 +322,11 @@ ClassMethod Scripts()
         const cancelEditDocumentBtn = document.getElementById('cancelEditDocumentBtn');
         const confirmEditDocumentBtn = document.getElementById('confirmEditDocumentBtn');
         const editDocumentData = document.getElementById('editDocumentData');
+        // Delete Document modal elements
+        const deleteDocumentModal = document.getElementById('deleteDocumentModal');
+        const cancelDeleteDocumentBtn = document.getElementById('cancelDeleteDocumentBtn');
+        const confirmDeleteDocumentBtn = document.getElementById('confirmDeleteDocumentBtn');
+        const deleteDocId = document.getElementById('deleteDocId');
 
         // State variables
         let selectedNamespace = '';
@@ -306,6 +341,7 @@ ClassMethod Scripts()
             // Event listeners
             fetchButton.addEventListener('click', handleFetchDocument);
             addDocumentBtn.addEventListener('click', openAddDocumentModal);
+	    deleteDocumentBtn.addEventListener('click', openDeleteDocumentModal);
             docIdInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') handleFetchDocument();
             });
@@ -328,6 +364,9 @@ ClassMethod Scripts()
             // Edit Document modal event listeners
             cancelEditDocumentBtn.addEventListener('click', closeEditDocumentModal);
             confirmEditDocumentBtn.addEventListener('click', updateDocument);
+            // Delete Document modal event listeners
+            cancelDeleteDocumentBtn.addEventListener('click', closeDeleteDocumentModal);
+            confirmDeleteDocumentBtn.addEventListener('click', deleteDocument);
 
             // Close modals when clicking the X
             closeModal.forEach(element => {
@@ -338,6 +377,8 @@ ClassMethod Scripts()
                         closeAddDocumentModal();
                     } else if (this.closest('#editDocumentModal')) {
                         closeEditDocumentModal();
+		    } else if (this.closest('#deleteDocumentModal')) {
+                        closeDeleteDocumentModal();
                     }
                 });
             });
@@ -350,6 +391,8 @@ ClassMethod Scripts()
                     closeAddDocumentModal();
                 } else if (e.target === editDocumentModal) {
                     closeEditDocumentModal();
+		} else if (e.target === deleteDocumentModal) {
+                    closeDeleteDocumentModal();
                 }
             });
         });
@@ -526,7 +569,8 @@ ClassMethod Scripts()
             // Show details panel
             welcomeMessage.style.display = 'none';
             detailsPanel.style.display = 'block';
-            selectedDocdbTitle.textContent = `${docdb} Properties`;
+            count = #server(..GetDocDBRecCount(namespace,docdb))#;
+            selectedDocdbTitle.innerHTML  = `${docdb}  <br> Count : <i>${count}</i>`;
 
             // Reset result
             resultContainer.style.display = 'none';
@@ -538,7 +582,8 @@ ClassMethod Scripts()
                 if (!response.ok) throw new Error('Failed to load document database properties');
 
                 const data = await response.json();
-                const properties = data.content.properties;
+                properties = data.content.properties;
+
 
                 // Clear existing properties
                 propertiesTable.innerHTML = '';
@@ -610,6 +655,17 @@ ClassMethod Scripts()
             newDocdbModal.style.display = 'none';
         }
 
+        function htmlEncode(str) {
+		  const txt = document.createElement("textarea");
+			txt.innerHTML = str;
+			return txt.innerHTML;
+		}
+		function decodeHTMLEntities(str) {
+		  const txt = document.createElement("textarea");
+		  txt.innerHTML = str;
+		  return txt.value;
+		}
+
         // Create a new document database
         async function createNewDocdb() {
             const docdbName = newDocdbName.value.trim();
@@ -636,7 +692,7 @@ ClassMethod Scripts()
                     } else if (errorData.status && errorData.status.errors && errorData.status.errors.length > 0) {
                         errorMessage = decodeHTMLEntities(errorData.status.errors[0].error);
                     }
-                    alert(errorMessage);
+                    alert(htmlEncode(errorMessage));
                     throw new Error(errorMessage);
                 }
 
@@ -740,6 +796,9 @@ ClassMethod Scripts()
             } catch (error) {
                 showError(`Error adding document: ${error.message}`);
             }
+            /// Get the count once data added into database
+            count = #server(..GetDocDBRecCount(selectedNamespace,selectedDocdb))#;
+            selectedDocdbTitle.innerHTML  = `${selectedDocdb}  <br> Count : <i>${count}</i>`;
         }
 
         // Open the Edit Document modal
@@ -799,7 +858,61 @@ ClassMethod Scripts()
                 showError(`Error updating document: ${error.message}`);
             }
         }
+        // Open the Delete Document modal
+        function openDeleteDocumentModal() {
+            if (!selectedNamespace || !selectedDocdb) {
+                showError('Please select a document database first');
+                return;
+            }
 
+            // Pre-fill with current document ID if available
+            deleteDocId.value = currentDocId || '';
+
+            deleteDocumentModal.style.display = 'flex';
+        }
+
+        // Close the Delete Document modal
+        function closeDeleteDocumentModal() {
+            deleteDocumentModal.style.display = 'none';
+        }
+
+        // Delete a document
+        async function deleteDocument() {
+            const docId = deleteDocId.value.trim();
+
+            if (!docId) {
+                showError('Please enter a document ID');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}v1/${encodeURIComponent(selectedNamespace)}/doc/${encodeURIComponent(selectedDocdb)}/${docId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete document');
+
+                // Close the modal
+                closeDeleteDocumentModal();
+
+                // Show success message
+                showSuccess(`Document with ID "${docId}" deleted successfully`);
+
+                // Clear the document ID input and result if it was the deleted document
+                if (docId === currentDocId) {
+                    docIdInput.value = '';
+                    resultContainer.style.display = 'none';
+                    currentDocId = '';
+                }
+
+                // Update the document count
+
+                 count = #server(..GetDocDBRecCount(selectedNamespace,selectedDocdb))#;
+                selectedDocdbTitle.innerHTML  = `${selectedDocdb}  <br> Count : <i>${count}</i>`;
+            } catch (error) {
+                showError(`Error deleting document: ${error.message}`);
+            }
+        }
         // Show error message
         function showError(message) {
             errorMessage.textContent = message;
@@ -828,7 +941,7 @@ XData Style
 {
 <data>
 	<![CDATA[
-	*{box-sizing:border-box;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}body{background-color:#f5f7fa;color:#333;line-height:1.6;padding:0;margin:0;height:100vh;display:flex;flex-direction:column}.header{background-color:#4361ee;color:#fff;padding:15px 20px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}.header h1{margin:0;font-size:24px}.main-container{display:flex;flex:1;overflow:hidden}.left-panel{width:300px;background-color:#fff;border-right:1px solid #ddd;overflow-y:auto;padding:20px;display:flex;flex-direction:column}.right-panel{flex:1;padding:20px;overflow-y:auto;background-color:#f9f9f9}.tree-view{list-style-type:none;padding-left:0;margin-top:10px;flex:1}.tree-view ul{list-style-type:none;padding-left:20px;margin-top:5px;display:none}.tree-view li{margin:5px 0;position:relative}.tree-view .toggle{display:inline-block;width:16px;height:16px;margin-right:5px;text-align:center;cursor:pointer;color:#4361ee}.tree-view .namespace-item,.tree-view .docdb-item{padding:8px;border-radius:4px;cursor:pointer;display:flex;align-items:center}.tree-view .namespace-item{font-weight:600;background-color:#f1f1f1}.tree-view .docdb-item{margin-left:20px}.tree-view .namespace-item:hover,.tree-view .docdb-item:hover{background-color:#e1f0fa}.tree-view .selected{background-color:#d4e6f1;border-left:3px solid #4361ee}.container{background-color:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);padding:25px;margin-bottom:20px}.form-group{margin-bottom:20px}label{display:block;margin-bottom:8px;font-weight:600;color:#2c3e50}input[type="text"],select,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:4px;font-size:16px}input[type="text"]:focus,select:focus,textarea:focus{border-color:#4361ee;outline:none;box-shadow:0 0 0 2px rgba(67,97,238,0.2)}button{background-color:#4361ee;color:#fff;border:none;padding:12px 20px;border-radius:4px;cursor:pointer;font-size:16px;transition:background-color .3s;margin-top:10px}button:hover{background-color:#3a56d4}button:disabled{background-color:#95a5a6;cursor:not-allowed}.button-group{display:flex;gap:10px;margin-top:10px}.properties-container{margin-top:20px}.properties-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.properties-toggle{background:none;border:none;color:#4361ee;cursor:pointer;font-size:18px;padding:0;margin:0}.properties-toggle:hover{color:#3a56d4}.properties-table{width:100%;border-collapse:collapse;margin-top:10px}.properties-table th,.properties-table td{border:1px solid #ddd;padding:10px;text-align:left}.properties-table th{background-color:#f2f2f2;font-weight:600}.properties-table tr:nth-child(even){background-color:#f9f9f9}.result-container{margin-top:20px;padding:15px;background-color:#f8f9fa;border-radius:4px;border-left:4px solid #4361ee}.result-container pre{background-color:#f1f1f1;padding:15px;border-radius:4px;overflow-x:auto;white-space:pre-wrap;cursor:pointer;user-select:text}.result-container pre:hover{background-color:#e8e8e8}.edit-hint{font-size:12px;color:#7f8c8d;margin-top:5px;font-style:italic}.loading{display:inline-block;width:20px;height:20px;border:3px solid rgba(67,97,238,0.3);border-radius:50%;border-top-color:#4361ee;animation:spin 1s ease-in-out infinite;margin-left:10px;vertical-align:middle}@keyframes spin{to{transform:rotate(360deg)}}.error-message{color:#e74c3c;margin-top:10px;padding:10px;background-color:#fadbd8;border-radius:4px;display:none}.success-message{color:#27ae60;margin-top:10px;padding:10px;background-color:#d4edda;border-radius:4px;display:none}.welcome-message{text-align:center;padding:40px 20px;color:#7f8c8d}.welcome-message h2{color:#4361ee;margin-bottom:15px}.new-docdb-btn{background-color:#4361ee;color:#fff;border:none;padding:10px 15px;border-radius:4px;cursor:pointer;font-size:14px;margin-top:15px;display:flex;align-items:center;justify-content:center;width:100%}.new-docdb-btn:hover{background-color:#3a56d4}.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,0.5);align-items:center;justify-content:center}.modal-content{background-color:#fff;padding:25px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.2);width:500px;max-width:90%}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.modal-header h2{margin:0;color:#4361ee}.close{color:#aaa;font-size:28px;font-weight:bold;cursor:pointer}.close:hover{color:#000}.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.btn-secondary{background-color:#95a5a6}.btn-secondary:hover{background-color:#7f8c8d}textarea{min-height:200px;resize:vertical;font-family:'Courier New',Courier,monospace}h2,h3{color:#4361ee}.collapsed{display:none}
+	*{box-sizing:border-box;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}body{background-color:#f5f7fa;color:#333;line-height:1.6;padding:0;margin:0;height:100vh;display:flex;flex-direction:column}.header{background-color:#4361ee;color:#fff;padding:15px 20px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}.header h1{margin:0;font-size:24px}.main-container{display:flex;flex:1;overflow:hidden}.left-panel{width:300px;background-color:#fff;border-right:1px solid #ddd;overflow-y:auto;padding:20px;display:flex;flex-direction:column}.right-panel{flex:1;padding:20px;overflow-y:auto;background-color:#f9f9f9}.tree-view{list-style-type:none;padding-left:0;margin-top:10px;flex:1}.tree-view ul{list-style-type:none;padding-left:20px;margin-top:5px;display:none}.tree-view li{margin:5px 0;position:relative}.tree-view .toggle{display:inline-block;width:16px;height:16px;margin-right:5px;text-align:center;cursor:pointer;color:#4361ee}.tree-view .namespace-item,.tree-view .docdb-item{padding:8px;border-radius:4px;cursor:pointer;display:flex;align-items:center}.tree-view .namespace-item{font-weight:600;background-color:#f1f1f1}.tree-view .docdb-item{margin-left:20px}.tree-view .namespace-item:hover,.tree-view .docdb-item:hover{background-color:#e1f0fa}.tree-view .selected{background-color:#d4e6f1;border-left:3px solid #4361ee}.container{background-color:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);padding:25px;margin-bottom:20px}.form-group{margin-bottom:20px}label{display:block;margin-bottom:8px;font-weight:600;color:#2c3e50}input[type="text"],select,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:4px;font-size:16px}input[type="text"]:focus,select:focus,textarea:focus{border-color:#4361ee;outline:none;box-shadow:0 0 0 2px rgba(67,97,238,0.2)}button{background-color:#4361ee;color:#fff;border:none;padding:12px 20px;border-radius:4px;cursor:pointer;font-size:16px;transition:background-color .3s;margin-top:10px}button:hover{background-color:#3a56d4}button:disabled{background-color:#95a5a6;cursor:not-allowed}.button-group{display:flex;gap:10px;margin-top:10px}.properties-container{margin-top:20px}.properties-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.properties-toggle{background:none;border:none;color:#4361ee;cursor:pointer;font-size:18px;padding:0;margin:0}.properties-toggle:hover{color:#3a56d4}.properties-table{width:100%;border-collapse:collapse;margin-top:10px}.properties-table th,.properties-table td{border:1px solid #ddd;padding:10px;text-align:left}.properties-table th{background-color:#f2f2f2;font-weight:600}.properties-table tr:nth-child(even){background-color:#f9f9f9}.result-container{margin-top:20px;padding:15px;background-color:#f8f9fa;border-radius:4px;border-left:4px solid #4361ee}.result-container pre{background-color:#f1f1f1;padding:15px;border-radius:4px;overflow-x:auto;white-space:pre-wrap;cursor:pointer;user-select:text}.result-container pre:hover{background-color:#e8e8e8}.edit-hint{font-size:12px;color:#7f8c8d;margin-top:5px;font-style:italic}.loading{display:inline-block;width:20px;height:20px;border:3px solid rgba(67,97,238,0.3);border-radius:50%;border-top-color:#4361ee;animation:spin 1s ease-in-out infinite;margin-left:10px;vertical-align:middle}@keyframes spin{to{transform:rotate(360deg)}}.error-message{color:#e74c3c;margin-top:10px;padding:10px;background-color:#fadbd8;border-radius:4px;display:none}.success-message{color:#27ae60;margin-top:10px;padding:10px;background-color:#d4edda;border-radius:4px;display:none}.welcome-message{text-align:center;padding:40px 20px;color:#7f8c8d}.welcome-message h2{color:#4361ee;margin-bottom:15px}.new-docdb-btn{background-color:#4361ee;color:#fff;border:none;padding:10px 15px;border-radius:4px;cursor:pointer;font-size:14px;margin-top:15px;display:flex;align-items:center;justify-content:center;width:100%}.new-docdb-btn:hover{background-color:#3a56d4}.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background-color:rgba(0,0,0,0.5);align-items:center;justify-content:center}.modal-content{background-color:#fff;padding:25px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.2);width:500px;max-width:90%}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.modal-header h2{margin:0;color:#4361ee}.close{color:#aaa;font-size:28px;font-weight:bold;cursor:pointer}.close:hover{color:#000}.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.btn-secondary{background-color:#95a5a6}.btn-secondary:hover{background-color:#7f8c8d}.btn-danger{background-color:#e74c3c}.btn-danger:hover{background-color:#c0392b}textarea{min-height:200px;resize:vertical;font-family:'Courier New',Courier,monospace}h2,h3{color:#4361ee}.collapsed{display:none}
 	]]>>
 </data>
 }
