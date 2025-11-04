@@ -55,9 +55,7 @@ http://localhost:52773/csp/user/DocDB.Home.cls
 ```
 ## Screenshot
 ---
-<img width="890" height="825" alt="image" src="https://github.com/user-attachments/assets/438e5922-e720-476e-a4c1-1f68b5a22452" />
-
-
+<img width="1732" height="978" alt="image" src="https://github.com/user-attachments/assets/d7efe41c-a40a-4a1f-8e87-d176001537da" />
 
 
 ## License
