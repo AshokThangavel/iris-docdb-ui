@@ -4,7 +4,7 @@
     <Module>
       <Name>DocDB-UI</Name>
       <ExternalName>DocDBUI</ExternalName>
-      <Version>1.0.3</Version>
+      <Version>1.0.4</Version>
       <Description>A streamlined explorer for InterSystems IRIS Document Databases.</Description>
       <Keywords>DocDB, json, document database,schemaless</Keywords>
       <Packaging>module</Packaging>
