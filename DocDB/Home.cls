@@ -1,91 +1,15 @@
+/// This <class>DocDB.Home </class> CSP page provides an overview of all available namespaces
+/// and the DocDB instances configured within each namespace.
+/// It serves as a central entry point for discovering and navigating
+/// DocDB resources across the system.
 Class DocDB.Home Extends %CSP.Page
 {
+
 Parameter Title As STRING = "DocDB";
 
 Parameter APPLICATION As STRING = "DocDB";
 
 Parameter CATEGORY As STRING = "DocDB";
-
-ClassMethod OnPage() As %Status
-{
-	Do ..OnPageCSPROOT()
-	Quit 1
-}
-
-ClassMethod AppDescription()
-{
-	Q ""
-}
-
-ClassMethod OnPageCSPROOT() As %Boolean
-{
-	Do ..OnPageHTML()
-}
-
-ClassMethod OnPageHTML() As %Boolean
-{
-	Write "<html>"
-	Write !
-	Do ..OnPageHEAD()
-	Do ..OnPageBODY()
-	Write !,"</html>"
-	Return $$$OK
-}
-
-ClassMethod OnPageHEAD() As %Boolean
-{
-	Write "<head>",!
-	Write !,"<title>"_..#Title_"</title>",!
-	Write "<style>",!
-	Do ..LoadCSS()
-	Write "</style>",!
-    Write "<link rel=""shortcut icon"" href=""portal/ISC_IRIS_icon.ico"">"
-	Write "<link rel=""stylesheet"" href=""https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"">"
-	Write "</head>",!
-	Write ..HyperEventHead()
-	Return $$$OK
-}
-
-ClassMethod OnPageBODY() As %Boolean
-{
-	Do ..RenderScreen()
-	Return $$$OK
-}
-
-/// Override this method to render your screens in UI
-ClassMethod RenderScreen()
-{
-	Do ..OnRenderScreen()
-	Do ..Scripts()
-}
-
-ClassMethod LoadCSS()
-{
-	Set obj = ##class(%Dictionary.CompiledXData).%OpenId($Classname()_"||Style")
-	Return:(obj = "") $$$OK
-	Set xdata = obj.Data
-	Set status = ##class(%XML.TextReader).ParseStream(xdata, .textreader)
-	While textreader.Read() { If (textreader.NodeType="chars") { Write textreader.Value } }
-	Return $$$OK
-}
-
-/// Setup your ServerInformation here
-ClassMethod GetServerInfo() As %String
-{
-	Set sc = ##class(%RoutineMgr).GetWebServerPort(.Port,.Server,.URLPrefix,.URL)
-	Set hostIP = ##class(%SYSTEM.Util).GetEnviron("HOST_IP")
-	Set:$Data(^ZIRIS.Docker.DocDB) hostIP = "localhost"
-	If hostIP'="" {
-		Set ServerInfo = $Piece(URL,"//")_"//"_hostIP_$Select(Port'="": ":"_Port,1: "")
-	}
-	Else {
-		If URL'[":"{
-			Set ServerInfo = $Extract(URL,1,*-1)_":"_Port
-		}
-		Set ServerInfo = $Extract(URL,1,*-1)
-	}
-	Return ServerInfo
-}
 
 ClassMethod OnRenderScreen() As %Status
 {
@@ -266,23 +190,24 @@ ClassMethod OnRenderScreen() As %Status
 
 ClassMethod EnableDocDBService()
 {
-	New $NAMESPACE
-	Set $NAMESPACE="%SYS"
-	do ##class(Security.Services).Get("%Service_DocDB", .svc)
+	New $Namespace
+	Set $Namespace="%SYS"
+	Do ##class(Security.Services).Get("%Service_DocDB", .svc)
 	If svc("Enabled")=0 {
 		Set svc("Enabled")=1
-		do ##class(Security.Services).Modify("%Service_DocDB", .svc)
+		Do ##class(Security.Services).Modify("%Service_DocDB", .svc)
 	}
 	Return $$$OK
 }
 
-ClassMethod CreateSampleDocDB()
+/// Create a sample Document Database with some data
+ClassMethod CreateSampleDocDB() [ Internal ]
 {
-	New $NAMESPACE
-	Set $NAMESPACE="USER"
+	New $Namespace
+	Set $Namespace="USER"
 	Do ##class(%SYSTEM.DocDB).CreateDatabase("test.docdb")
 	Set myoref = $ClassMethod("test.docdb","%New")
-	SET test = ["Anne","Bradford","Charles","Deborah"]
+	Set test = ["Anne","Bradford","Charles","Deborah"]
 	Set myoref.%Doc=test
 	Set st = myoref.%Save()
 	#; another document database
@@ -296,16 +221,110 @@ ClassMethod CreateSampleDocDB()
    	Set val = db.%SaveDocument({"lastName":"Madonna"})
 }
 
-ClassMethod GetDocDBRecCount(Namespace = "", DocDBName = "") As %Integer
+ClassMethod GetDocDBRecCount(
+	Namespace As %String = "",
+	DocDBName As %String = "") As %Integer
 {
-	New $NAMESPACE
-	Set $NAMESPACE = Namespace
+	Return:Namespace="" 0
+	New $Namespace
+	Set $Namespace = Namespace
 	Set count = 0
-	If $SYSTEM.DocDB.Exists(DocDBName) {
+	If $System.DocDB.Exists(DocDBName) {
 		Set db = ##class(%DocDB.Database).%GetDatabase(DocDBName)
 		Set count = db.%Size()
 	}
 	Return count
+}
+
+ClassMethod OnPage() As %Status
+{
+	Do ..OnPageCSPROOT()
+	Quit 1
+}
+
+ClassMethod AppDescription()
+{
+	Quit ""
+}
+
+ClassMethod OnPageCSPROOT() As %Boolean
+{
+	Do ..OnPageHTML()
+}
+
+ClassMethod OnPageHTML() As %Boolean
+{
+	Write "<html>"
+	Write !
+	Do ..OnPageHEAD()
+	Do ..OnPageBODY()
+	Write !,"</html>"
+	Return $$$OK
+}
+
+ClassMethod OnPageHEAD() As %Boolean
+{
+	Write "<head>",!
+	Write !,"<title>"_..#Title_"</title>",!
+	Write "<style>",!
+	Do ..LoadCSS()
+	Write "</style>",!
+    Write "<link rel=""shortcut icon"" href=""portal/ISC_IRIS_icon.ico"">"
+	Write "<link rel=""stylesheet"" href=""https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"">"
+	Write "</head>",!
+	Write ..HyperEventHead()
+	Return $$$OK
+}
+
+ClassMethod OnPageBODY() As %Boolean
+{
+	Do ..RenderScreen()
+	Return $$$OK
+}
+
+/// Override this method to render your screens in UI
+ClassMethod RenderScreen()
+{
+	Do ..OnRenderScreen()
+	Do ..Scripts()
+}
+
+ClassMethod LoadCSS()
+{
+	Set obj = ##class(%Dictionary.CompiledXData).%OpenId($ClassName()_"||Style")
+	Return:(obj = "") $$$OK
+	Set xdata = obj.Data
+	Set status = ##class(%XML.TextReader).ParseStream(xdata, .textreader)
+	While textreader.Read() { If (textreader.NodeType="chars") { Write textreader.Value } }
+	Return $$$OK
+}
+
+ClassMethod GetServerInfo() As %String
+{
+    If $System.CLS.IsMthd($ClassName(),"ConfgServerInfo") {
+        /// Setup your Server configuration in "ConfigServerInfo" method
+        Return $ClassMethod($ClassName(),"ConfigServerInfo")
+    }
+    Else {
+        Return ..DefaultServerInfo()
+    }
+}
+
+ClassMethod DefaultServerInfo() As %String
+{
+   Set sc = ##class(%RoutineMgr).GetWebServerPort(.Port,.Server,.URLPrefix,.URL)
+	Set hostIP = ##class(%SYSTEM.Util).GetEnviron("HOST_IP")
+	Set:$Data(^ZIRIS.Docker.DocDB) hostIP = "localhost"
+	If hostIP'="" {
+		Set ServerInfo = $Piece(URL,"//")_"//"_hostIP_$Select(Port'="": ":"_Port,1: "")
+	}
+	Else {
+		If URL'[":"{
+			Set ServerInfo = $Extract(URL,1,*-1)_":"_Port
+		}
+		Set ServerInfo = $Extract(URL,1,*-1)
+	}
+	Return ServerInfo
 }
 
 ClassMethod Scripts()
