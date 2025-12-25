@@ -302,7 +302,7 @@ ClassMethod LoadCSS()
 ClassMethod GetServerInfo() As %String
 {
     If $System.CLS.IsMthd($ClassName(),"ConfigServerInfo") {
-        /// Setup your Server configuration in "ConfigServerInfo" method
+        /// Setup your Server configuration in "ConfigServerInfo" method of this class
         Return $ClassMethod($ClassName(),"ConfigServerInfo")
     }
     Else {
