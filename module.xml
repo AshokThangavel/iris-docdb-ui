@@ -3,9 +3,10 @@
   <Document name="DocDB-UI.ZPM">
     <Module>
       <Name>DocDB-UI</Name>
-      <Version>1.0.2</Version>
-      <Description>DocDB-UI</Description>
-      <Keywords>Terminal, COS</Keywords>
+      <ExternalName>DocDBUI</ExternalName>
+      <Version>1.0.3</Version>
+      <Description>A streamlined explorer for InterSystems IRIS Document Databases.</Description>
+      <Keywords>DocDB, json, document database,schemaless</Keywords>
       <Packaging>module</Packaging>
       <Resource Name="DocDB.PKG"/>
       <LifecycleClass>%IPM.Lifecycle.Module</LifecycleClass>
