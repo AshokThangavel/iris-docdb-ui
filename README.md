@@ -5,11 +5,11 @@ A sleek and intuitive Document Database Explorer UI for **InterSystems IRIS**. E
 
 ## Features
 
-- Browse namespaces and document databases within InterSystems IRIS  
-- Create new document databases dynamically  
-- View, add, edit, and save documents effortlessly  
-- Clean and responsive interface built with modern web technologies  
-- Real-time feedback and error handling  
+- Browse namespaces and document databases within InterSystems IRIS
+- Create new document databases dynamically
+- View, add, edit, and save documents effortlessly
+- Clean and responsive interface built with modern web technologies
+- Real-time feedback and error handling
 
 ---
 
@@ -17,8 +17,8 @@ A sleek and intuitive Document Database Explorer UI for **InterSystems IRIS**. E
 
 ### Prerequisites
 
-- InterSystems IRIS instance running and accessible  
-- API endpoint enabled for Document Database operations  
+- InterSystems IRIS instance running and accessible
+- API endpoint enabled for Document Database operations
 
 ## ⚙️ Installation
 
@@ -51,6 +51,11 @@ Access the InterSystems IRIS **System Management Portal** at:
 Once the containers are running, open your browser and navigate to:
 
 http://localhost:52773/csp/user/DocDB.Home.cls
+
+## Note
+
+> If the **docdb-ui** crashes or API calls to the `/docdb` endpoint fail in any environment, please create `ConfgServerInfo` class method to ensure the correct server and port are used.
+
 
 ## Screenshot
 ---
